@@ -3,8 +3,10 @@ FROM selenium/standalone-chrome:128.0
 
 WORKDIR /app
 
-# Actualizar repositorios y limpiar caché
-RUN apt-get clean && rm -rf /var/lib/apt/lists/* \
+# Configurar repositorios de paquetes válidos
+RUN echo "deb http://deb.debian.org/debian bullseye main" > /etc/apt/sources.list \
+    && echo "deb http://deb.debian.org/debian-security bullseye-security main" >> /etc/apt/sources.list \
+    && apt-get clean && rm -rf /var/lib/apt/lists/* \
     && apt-get update --fix-missing \
     && apt-get install -y --no-install-recommends \
         python3 \
