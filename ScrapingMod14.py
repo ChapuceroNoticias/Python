@@ -1,6 +1,5 @@
 import re
 import time
-import os
 import logging
 from contextlib import redirect_stderr
 from bs4 import BeautifulSoup
@@ -13,14 +12,13 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import WebDriverException, TimeoutException
 
-# Configurar logging para depuración silenciosa
+# Configurar logging para depuración (sin archivo)
 logging.basicConfig(
-    filename='debug.log',
     level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
-# Configuración de selectores por dominio
+# Configuración de selectors por dominio
 DOMAIN_CONFIG = {
     'aristeguinoticias.com': {
         'title_selector': ['h1.entry-title', 'meta[property="og:title"]', 'meta[name="twitter:title"]', 'title', 'h1'],
@@ -93,7 +91,7 @@ def get_news_content(url, max_retries=2):
     try:
         for attempt in range(max_retries):
             try:
-                # Configurar Selenium con servicio para suprimir logs
+                # Configurar Selenium
                 options = Options()
                 options.add_argument('--headless=new')
                 options.add_argument('--disable-gpu')
@@ -104,27 +102,20 @@ def get_news_content(url, max_retries=2):
                 options.add_argument('--disable-infobars')
                 options.add_argument('--log-level=3')
                 options.add_argument('--silent')
-                options.add_argument('--silent-output')
-                options.add_argument('--disable-logging')
                 options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36')
                 options.add_experimental_option('excludeSwitches', ['enable-logging'])
                 options.add_argument('--disable-blink-features=AutomationControlled')
-                service = Service(log_path=os.devnull)
+                service = Service(log_path='/dev/null')
                 
-                # Redirigir stderr para suprimir mensajes como "DevTools listening"
-                with open(os.devnull, 'w') as devnull:
+                with open('/dev/null', 'w') as devnull:
                     with redirect_stderr(devnull):
                         driver = webdriver.Chrome(service=service, options=options)
-                        
-                        # Intentar cargar la página
                         driver.set_page_load_timeout(60)
                         driver.get(url)
                         
-                        # Obtener el dominio para configuraciones específicas
                         domain = get_domain(url)
                         config = DOMAIN_CONFIG.get(domain, DOMAIN_CONFIG['default'])
                         
-                        # Espera dinámica para aristeguinoticias.com
                         if domain == 'aristeguinoticias.com':
                             logging.debug(f"Intento {attempt + 1} para {url}")
                             try:
@@ -137,14 +128,8 @@ def get_news_content(url, max_retries=2):
                         else:
                             time.sleep(15)
                         
-                        # Obtener el HTML renderizado
                         html = driver.page_source
-                        
-                        # Guardar HTML para depuración
-                        with open('debug.html', 'w', encoding='utf-8') as f:
-                            f.write(html)
                 
-                # Parsear con BeautifulSoup
                 soup = BeautifulSoup(html, 'html.parser')
                 
                 # Eliminar scripts, estilos, comentarios y elementos no deseados
@@ -232,7 +217,6 @@ def get_news_content(url, max_retries=2):
                     elif domain == 'www.debate.com.mx':
                         content_div = soup.select_one(config['body_selector'])
                         if content_div:
-                            # Excluir elementos no deseados
                             for unwanted in content_div.select('div.ck-related-news, li'):
                                 unwanted.decompose()
                             body_text = content_div.get_text(strip=True)
@@ -311,18 +295,3 @@ def get_news_content(url, max_retries=2):
                 driver.quit()
             except:
                 pass
-
-def main():
-    url = input("Por favor, ingrese la URL de la noticia: ")
-    if not url.startswith(('http://', 'https://')):
-        url = 'https://' + url
-    
-    title, body = get_news_content(url)
-    
-    print("\nTítulo de la noticia:")
-    print(title)
-    print("\nCuerpo de la noticia:")
-    print(body)
-
-if __name__ == "__main__":
-    main()
