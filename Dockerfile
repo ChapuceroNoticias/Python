@@ -1,22 +1,35 @@
-# Usar una imagen base con Chrome y ChromeDriver
-FROM selenium/standalone-chrome:128.0
+FROM python:3.11-slim
 
 WORKDIR /app
 
-# Configurar repositorios de paquetes válidos
-RUN echo "deb http://deb.debian.org/debian bullseye main" > /etc/apt/sources.list \
-    && echo "deb http://deb.debian.org/debian-security bullseye-security main" >> /etc/apt/sources.list \
-    && apt-get clean && rm -rf /var/lib/apt/lists/* \
-    && apt-get update --fix-missing \
-    && apt-get install -y --no-install-recommends \
-        python3 \
-        python3-pip \
-        python3-dev \
-        build-essential \
-    && apt-get clean \
+# Instalar dependencias del sistema
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    wget \
+    unzip \
+    curl \
+    gnupg \
+    ca-certificates \
+    python3 \
+    python3-pip \
+    python3-dev \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Copiar requirements.txt e instalar dependencias
+# Instalar Google Chrome
+RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/google-chrome.gpg \
+    && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list \
+    && apt-get update \
+    && apt-get install -y google-chrome-stable \
+    && rm -rf /var/lib/apt/lists/*
+
+# Instalar ChromeDriver
+RUN CHROMEDRIVER_VERSION=$(curl -sS chromedriver.storage.googleapis.com/LATEST_RELEASE) \
+    && wget -O /tmp/chromedriver.zip https://chromedriver.storage.googleapis.com/$CHROMEDRIVER_VERSION/chromedriver_linux64.zip \
+    && unzip /tmp/chromedriver.zip -d /usr/local/bin/ \
+    && rm /tmp/chromedriver.zip \
+    && chmod +x /usr/local/bin/chromedriver
+
+# Instalar dependencias de Python
 COPY requirements.txt .
 RUN pip3 install --no-cache-dir -r requirements.txt
 
